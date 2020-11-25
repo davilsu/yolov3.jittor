@@ -1,0 +1,7 @@
+data/coco
+__pycache__
+*/__pycache__
+*/*/__pycache__
+runs
+weights
+results.json
