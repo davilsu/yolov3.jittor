@@ -28,7 +28,6 @@ def test(cfg,
     # Initialize/load model and set device
     if model is None:
         is_training = False
-        # device = jittor_utils.select_device(opt.device, batch_size=batch_size)
         verbose = opt.task == 'test'
 
         # Remove previous
@@ -47,13 +46,9 @@ def test(cfg,
 
         # Fuse
         model.fuse()
-        # model.to(device)
 
-        # if device.type != 'cpu' and torch.cuda.device_count() > 1:
-        #     model = nn.DataParallel(model)
     else:  # called by train.py
         is_training = True
-        # device = next(model.parameters()).device  # get model device
         verbose = False
 
     # Configure run
@@ -243,8 +238,6 @@ def test(cfg,
 
 if __name__ == '__main__':
     jt.flags.use_cuda=1
-    # jt.flags.merge_loop_mismatch_threshold = 1
-
 
     parser = argparse.ArgumentParser(prog='test.py')
     parser.add_argument('--cfg', type=str, default='cfg/yolov3.cfg', help='*.cfg path')

@@ -1,7 +1,6 @@
 import argparse
 import torch
 import jittor.optim as optim
-import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 
 import test  # import test.py to get mAP after each epoch
@@ -211,6 +210,7 @@ def train(hyp):
         print(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'GIoU', 'obj', 'cls', 'total', 'targets', 'img_size'))
         pbar = tqdm(enumerate(dataloader), total=nb)  # progress bar
         for i, (imgs, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
+            # dataloader.display_worker_status()
             ni = i + nb * epoch  # number integrated batches (since train start)
             imgs = imgs.float32() / 255.0  # uint8 to float32, 0 - 255 to 0.0 - 1.0
             targets = targets.float32()
@@ -236,28 +236,19 @@ def train(hyp):
                     ns = [math.ceil(x * sf / gs) * gs for x in imgs.shape[2:]]  # new shape (stretched to 32-multiple)
                     imgs = nn.interpolate(imgs, size=ns, mode='bilinear', align_corners=False)
             
-            # start = jittor_utils.time_synchronized()
             # Forward
             pred = model(imgs)
 
-            # print(jittor_utils.time_synchronized()-start)
-
             # Loss
             loss, loss_items = compute_loss(pred, targets, model)
-            # if not torch.isfinite(loss):
-            #     print('WARNING: non-finite loss, ending training ', loss_items)
-            #     return results
-            # print(jittor_utils.time_synchronized()-start)
+         
             # Backward
             loss *= batch_size / 64  # scale loss
-            # loss.backward()
-            # print(loss)
 
             # Optimize
             if ni % accumulate == 0:
                 optimizer.step(loss)
                 ema.update(model)
-            # print(jittor_utils.time_synchronized()-start)
             # Print
             mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
             mem = '%.3gG' % (0,) #(torch.cuda.memory_cached() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
@@ -367,7 +358,6 @@ if __name__ == '__main__':
     parser.add_argument('--cache-images', action='store_true', help='cache images for faster training')
     parser.add_argument('--weights', type=str, default='weights/yolov3.pt', help='initial weights path')
     parser.add_argument('--name', default='', help='renames results.txt to results_name.txt if supplied')
-    parser.add_argument('--device', default='', help='device id (i.e. 0 or 0,1 or cpu)')
     parser.add_argument('--adam', action='store_true', help='use adam optimizer')
     parser.add_argument('--single-cls', action='store_true', help='train as single-class dataset')
     parser.add_argument('--freeze-layers', action='store_true', help='Freeze non-output layers')
