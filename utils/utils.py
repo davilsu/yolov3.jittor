@@ -15,16 +15,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import jittor as jt 
 from jittor import nn
-# import torch
-# import torch.nn as nn
-# import torchvision
 from tqdm import tqdm
 
 from . import jittor_utils  # , google_utils
-from .nms import nms
 
 # Set printoptions
-# torch.set_printoptions(linewidth=320, precision=5, profile='long')
 np.set_printoptions(linewidth=320, formatter={'float_kind': '{:11.5g}'.format})  # format short g, %precision=5
 matplotlib.rc('font', **{'size': 11})
 
@@ -120,6 +115,7 @@ def xywh2xyxy(x):
     y[:, 1] = x[:, 1] - x[:, 3] / 2  # top left y
     y[:, 2] = x[:, 0] + x[:, 2] / 2  # bottom right x
     y[:, 3] = x[:, 1] + x[:, 3] / 2  # bottom right y
+    
     return y
 
 
@@ -543,7 +539,6 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, multi_label=T
         c = x[:, 5] * 0 if agnostic else x[:, 5]  # classes
         boxes, scores = x[:, :4].clone() + c.view(-1, 1) * max_wh, x[:, 4]  # boxes (offset by class), scores
         # print(boxes.shape,scores.shape)
-        # i = nms(boxes, scores, iou_thres)
         i = jt.nms(jt.contrib.concat((boxes,scores.unsqueeze(-1)),dim=1),iou_thres)
         # print(i.shape,i.sum())
         if merge and (1 < n < 3E3):  # Merge NMS (boxes merged using weighted mean)

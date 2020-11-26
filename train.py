@@ -1,6 +1,7 @@
 import argparse
 import torch
 import jittor.optim as optim
+import time
 from torch.utils.tensorboard import SummaryWriter
 
 import test  # import test.py to get mAP after each epoch
@@ -209,11 +210,20 @@ def train(hyp):
         mloss = jt.zeros((4,)) # mean losses
         print(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'GIoU', 'obj', 'cls', 'total', 'targets', 'img_size'))
         pbar = tqdm(enumerate(dataloader), total=nb)  # progress bar
+        start_time = time.time()
         for i, (imgs, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
-            # dataloader.display_worker_status()
+            if i>500:
+                print(time.time()-start_time)
+                break
+            if i==30:
+                start_time = time.time()
+                
             ni = i + nb * epoch  # number integrated batches (since train start)
             imgs = imgs.float32() / 255.0  # uint8 to float32, 0 - 255 to 0.0 - 1.0
             targets = targets.float32()
+            # if i>10:
+            #     jt.flags.extra_gdb_cmd = "b cudaDeviceSynchronize; b cudaMemcpy"
+            #     jt.flags.gdb_attach = 1
 
             # Burn-in
             if ni <= n_burn:
@@ -247,6 +257,7 @@ def train(hyp):
 
             # Optimize
             if ni % accumulate == 0:
+                loss.sync()
                 optimizer.step(loss)
                 ema.update(model)
             # Print
@@ -263,10 +274,8 @@ def train(hyp):
                     tb_writer.add_image(f, res, dataformats='HWC', global_step=epoch)
                     # tb_writer.add_graph(model, imgs)  # add model to tensorboard
             
-            # if i>0: break
-
             # end batch ------------------------------------------------------------------------------------------------
-
+        break
         # Update scheduler
         scheduler.step()
 
@@ -319,7 +328,6 @@ def train(hyp):
             if (best_fitness == fi) and not final_epoch:
                 torch.save(ckpt, best)
             del ckpt
-        break
         # end epoch ----------------------------------------------------------------------------------------------------
     # end training
 
@@ -342,9 +350,10 @@ def train(hyp):
 
 if __name__ == '__main__':
     jt.flags.use_cuda=1
+    jt.cudnn.set_algorithm_cache_size(10000)
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=300)  # 500200 batches at bs 16, 117263 COCO images = 273 epochs
-    parser.add_argument('--batch-size', type=int, default=16)  # effective bs = batch_size * accumulate = 16 * 4 = 64
+    parser.add_argument('--batch-size', type=int, default=8)  # effective bs = batch_size * accumulate = 16 * 4 = 64
     parser.add_argument('--cfg', type=str, default='cfg/yolov3.cfg', help='*.cfg path')
     parser.add_argument('--data', type=str, default='data/coco2014.data', help='*.data path')
     parser.add_argument('--multi-scale', action='store_true', help='adjust (67%% - 150%%) img_size every 10 batches')
@@ -363,7 +372,6 @@ if __name__ == '__main__':
     parser.add_argument('--freeze-layers', action='store_true', help='Freeze non-output layers')
     opt = parser.parse_args()
     opt.weights = last if opt.resume and not opt.weights else opt.weights
-    check_git_status()
     opt.cfg = check_file(opt.cfg)  # check file
     opt.data = check_file(opt.data)  # check file
     print(opt)

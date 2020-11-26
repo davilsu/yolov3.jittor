@@ -155,6 +155,7 @@ class ModelEMA:
         with jt.no_grad():
             msd, esd = model.state_dict(), self.ema.state_dict()
 
+
             for k, v in esd.items():
                 if 'float' in str(v.dtype):
                     v *= d

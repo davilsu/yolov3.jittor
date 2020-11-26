@@ -116,7 +116,7 @@ def test(cfg,
 
             # Clip boxes to image bounds
             clip_coords(pred, (height, width))
-
+            
             # Append to pycocotools JSON dictionary
             if save_json:
                 # [{"image_id": 42, "category_id": 18, "bbox": [258.15, 41.29, 348.26, 243.78], "score": 0.236}, ...
@@ -136,7 +136,7 @@ def test(cfg,
             if nl:
                 detected = []  # target indices
                 tcls_tensor = labels[:, 0]
-
+                
                 # target boxes
                 tbox = xywh2xyxy(labels[:, 1:5]) * whwh
 
@@ -147,12 +147,10 @@ def test(cfg,
                     ti = (cls == tcls_tensor).nonzero().view(-1)  # target indices
                     pi = (cls == pred[:, 5]).nonzero().view(-1)  # prediction indices
                     
-                    # print(ti,pi)
                     # Search for detections
                     if pi.shape[0]:
                         # Prediction to target ious
                         i,ious = box_iou(pred[pi, :4], tbox[ti]).argmax(1)  # best ious, indices
-
                         # Append detections
                         tmp_iou = (ious > iouv[0]).nonzero()
                         for idj in range(tmp_iou.shape[0]):
@@ -164,8 +162,7 @@ def test(cfg,
                                 detected.append(d)
                                 correct[pi[j]] = ious[j] > iouv  # iou_thres is 1xn
                                 if len(detected) == nl:  # all targets already located in image
-                                    break
-            
+                                    break            
             # Append statistics (correct, conf, pcls, tcls)
             stats.append((correct.numpy(), pred[:, 4].numpy(), pred[:, 5].numpy(), tcls))
 
@@ -175,11 +172,9 @@ def test(cfg,
             plot_images(imgs, targets, paths=paths, names=names, fname=f)  # ground truth
             f = 'test_batch%g_pred.jpg' % batch_i
             plot_images(imgs, output_to_target(output, width, height), paths=paths, names=names, fname=f)  # predictions
-
+        
     print(s)
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
-    for s in stats:
-        print('stats:',s.sum(),s.shape)
     if len(stats):
         p, r, ap, f1, ap_class = ap_per_class(*stats)
         if niou > 1:
@@ -238,6 +233,7 @@ def test(cfg,
 
 if __name__ == '__main__':
     jt.flags.use_cuda=1
+    jt.cudnn.set_algorithm_cache_size(0)
 
     parser = argparse.ArgumentParser(prog='test.py')
     parser.add_argument('--cfg', type=str, default='cfg/yolov3.cfg', help='*.cfg path')
@@ -249,7 +245,6 @@ if __name__ == '__main__':
     parser.add_argument('--iou-thres', type=float, default=0.6, help='IOU threshold for NMS')
     parser.add_argument('--save-json', action='store_true', help='save a cocoapi-compatible JSON results file')
     parser.add_argument('--task', default='test', help="'test', 'study', 'benchmark'")
-    parser.add_argument('--device', default='', help='device id (i.e. 0 or 0,1) or cpu')
     parser.add_argument('--single-cls', action='store_true', help='train as single-class dataset')
     parser.add_argument('--augment', action='store_true', help='augmented inference')
     opt = parser.parse_args()
